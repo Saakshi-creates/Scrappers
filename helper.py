@@ -1,135 +1,241 @@
-import time
-
-import requests
-import pygsheets
 import cfscrape
-def get_city_dict():
-    city={
-        'Gurgoan':"MjguNDQ5ODQ5NHw3Ny4wNTY2ODg3",
-        # 'Noida':"MjguNTc3Mzc5OXw3Ny4zMTQ0OTM1OTk5OTk5OQ==",
-        'Mumbai':"MTkuMjE4MzMwN3w3Mi45NzgwODk3",
-        # 'Delhi':"MjguNTU1NTc2OTE4NTl8NzcuMjMzNTkwMjI1Mzcy"
-    }
-    return city
-def get_city_lat_long(city):
-    city_dict = {
-        'Gurgoan': "MjguNDQ5ODQ5NHw3Ny4wNTY2ODg3",
-        # 'Noida': "MjguNTc3Mzc5OXw3Ny4zMTQ0OTM1OTk5OTk5OQ==",
-        'Mumbai': "MTkuMjE4MzMwN3w3Mi45NzgwODk3",
-        # 'Delhi':"MjguNTU1NTc2OTE4NTl8NzcuMjMzNTkwMjI1Mzcy"
-    }
-    return city_dict.get(city)
-def get_slugs(city):
-    return ['bakery-cakes-dairy', 'snacks-branded-foods','eggs-meat-fish', 'gourmet-world-food','foodgrains-oil-masala', 'beverages','kitchen-garden-pets']
-    return ["eggs","milk","paneer-tofu-cream","butter-margarine","buttermilk-lassi","cheese","curd","atta-flours-sooji","atta-whole-wheat","rice-other-flours","sooji-maida-besan","rice-rice-products","basmati-rice","boiled-steam-rice","poha-sabudana-murmura","raw-rice","dals-pulses","cereals-millets","toor-channa-moong-dal","urad-other-dals","edible-oils-ghee","masalas-spices","blended-cooking-oils","cold-pressed-oil","cooking-coconut-oil","cotton-seed-oil","ghee-vanaspati","groundnut-oils","olive-canola-oils","other-edible-oils","soya-mustard-oils","sunflower-rice-bran-oil","dry-fruits","almonds","cashews","mukhwas","other-dry-fruits","raisins","salt-sugar-jaggery","salts","sugar-jaggery","sugarfree-sweeteners","breads-buns","dairy","gourmet-breads","non-dairy","fresh-vegetables","fresh-fruits","organic-fruits-vegetables","cuts-sprouts","exotic-fruits-veggies","flower-bouquets-bunches"]
-        # ,"cuts-sprouts","exotic-fruits-veggies","flower-bouquets-bunches","fresh-fruits","herbs-seasonings","organic-fruits-vegetables","atta-flours-sooji","atta-whole-wheat","rice-other-flours","sooji-maida-besan","rice-rice-products","basmati-rice","boiled-steam-rice","poha-sabudana-murmura","raw-rice","dals-pulses","cereals-millets","toor-channa-moong-dal","urad-other-dals","edible-oils-ghee","masalas-spices","blended-cooking-oils","cold-pressed-oil","cooking-coconut-oil","cotton-seed-oil","ghee-vanaspati","groundnut-oils","olive-canola-oils","other-edible-oils","soya-mustard-oils","sunflower-rice-bran-oil","dry-fruits","almonds","cashews","mukhwas","other-dry-fruits","raisins","salt-sugar-jaggery","salts","sugar-jaggery","sugarfree-sweeteners","breads-buns","dairy","gourmet-breads","non-dairy","eggs","milk","paneer-tofu-cream","butter-margarine","buttermilk-lassi","cheese","curd"]
-# 'foodgrains-oil-masala', 'bakery-cakes-dairy', 'beverages', 'snacks-branded-foods', 'beauty-hygiene', 'cleaning-household', 'kitchen-garden-pets', 'eggs-meat-fish', 'gourmet-world-food', 'baby-care', 'paan-corner'
-# 'bakery-cakes-dairy', 'snacks-branded-foods','eggs-meat-fish', 'gourmet-world-food','foodgrains-oil-masala', 'beverages'
-# fruits-vegetables
-# 'bakery-cakes-dairy', 'snacks-branded-foods','eggs-meat-fish', 'gourmet-world-food','foodgrains-oil-masala', 'beverages'
-def get_vegetables(slug,city):
-    dict={
+import pygsheets
+from urllib.parse import urlparse, parse_qs
+import gspread
+from google.oauth2 import service_account
+from google.oauth2.service_account import Credentials
+import pandas as pd
+def get_cities():
+    return [
+        {
+            'city':'Gurgaon',
+            'lat':'28.445291',
+            'lon':'77.057038'
+        }
+        # {
+        #     "city":"Mumbai",
+        #     'lat':"19.246722",
+        #     "lon":"72.975971"
+        # },
+        # {
+        #     "city":"Noida",
+        #     "lat":"28.572985",
+        #     "lon":"77.324904",
+        #
+        # },
+        # {
+        #     "city": "Delhi",
+        #     "lat": "28.609554",
+        #     "lon": "77.330298",
+        #
+        # }
+    ]
+
+def get_dict():
+    return {
         'Name':[],
+        'Price':[],
         'MRP':[],
-        'Selling Price':[],
         'Weight':[],
         'Category':[],
-        'Sub-Category':[],
+        'Sub Category':[],
         'Availability':[],
-        'City':[],
-        'approx_quant':[],
-        'Brand':[]
+        'City': [],
+        'Brand':[],
+        'category_1':[]
     }
-    pageNo=1
-    count=0
-    # u = "https://www.bigbasket.com/listing-svc/v2/products?bucket_id=16&ec_id=100&page={}&type=pc&slug=dairy"
-    while True:
-        url = f"https://www.bigbasket.com/listing-svc/v2/products?type=pc&slug={slug}&page={pageNo}"
-        # url = u.format(pageNo)
-        cookies = {
-            '_bb_vid': "NTA3NDMzNTYwNA==",
-            '_bb_mid': "MzEwNDE4MzY2OA==",
-            "_bb_lat_long":get_city_lat_long(city)
-        }
-        headers = {
-            'user-agent':'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/115.0.5790.136 Mobile Safari/537.36',
-        }
-        scraper = cfscrape.create_scraper()
-        scraper.headers.update(headers)
-        response = scraper.get(url,cookies=cookies)
-        # response=requests.get(url=url,headers=headers,cookies=cookies)
-        try:
-            data=response.json()
-            products = data.get("tabs")[0].get("product_info").get("products")
-        except Exception as e:
-            print("Responsse",response.text)
-            print("Exception ",e)
-            break
-        for product in products:
-            brand=product.get("brand").get("name")
-            name=product.get("desc")
-            quantity=product.get("pack_desc")
-            mrp=product.get("pricing").get("discount").get("mrp")
-            sp=product.get("pricing").get("discount").get("prim_price").get("sp")
-            weight=product.get("w")
-            category=product.get("category").get("tlc_name")
-            sub_category=product.get("category").get("mlc_name")
-            children=product.get("children")
-            stock='InStock' if product.get("availability").get("avail_status")=='001' else 'Out Of Stock'
-            # print(f"{name} {mrp} {sp} {weight} {category} {sub_category} {stock}")
-            dict['Name'].append(name)
-            dict['MRP'].append(mrp)
-            dict['Selling Price'].append(sp)
-            dict['Weight'].append(weight)
-            dict['Category'].append(category)
-            dict['Sub-Category'].append(sub_category)
-            dict['Availability'].append(stock)
-            dict['City'].append(city)
-            dict['approx_quant'].append(quantity)
-            dict['Brand'].append(brand)
-            for child in children:
-                cbrand=child.get("brand").get("name")
-                cname = child.get("desc")
-                cquantity=child.get("pack_desc")
-                cmrp = child.get("pricing").get("discount").get("mrp")
-                csp = child.get("pricing").get("discount").get("prim_price").get("sp")
-                cweight = child.get("w")
-                ccategory = child.get("category").get("tlc_name")
-                csub_category = child.get("category").get("mlc_name")
-                cstock = 'InStock' if child.get("availability").get("avail_status") == '001' else 'Out of Stock'
-                dict['Name'].append(cname)
-                dict['MRP'].append(cmrp)
-                dict['Selling Price'].append(csp)
-                dict['Weight'].append(cweight)
-                dict['Category'].append(ccategory)
-                dict['Sub-Category'].append(csub_category)
-                dict['Availability'].append(cstock)
-                dict['City'].append(city)
-                dict['approx_quant'].append(cquantity)
-                dict['Brand'].append(cbrand)
-            count=count+1
-        time.sleep(1)
-        pageNo=pageNo+1
-        print("Page No. ",pageNo)
-
-    return dict
+def get_feed_listing(city_data):
+    scraper = cfscrape.create_scraper()
+    url="https://api2.grofers.com/v1/layout/feed"
+    headers={
+        'app_client':'consumer_android',
+        'lat':city_data.get("lat"),
+        'lon':city_data.get("lon"),
+        'app_version':'80150510',
+    }
+    scraper.headers.update(headers)
+    response = scraper.post(url)
+    data=response.json().get("response").get("snippets")
     # print(data)
+    # return
+    list=[]
+    for i in data:
+        if i.get("widget_type")=="grid_container_vr":
+            try:
+                items=i.get("data").get("items")
+                for j in items:
+                    url=j.get("data").get("click_action").get("blinkit_deeplink").get("url")
+                    parsed_url = urlparse(url)
+                    query_params = parse_qs(parsed_url.query)
+                    collection_uuid = query_params.get('collection_uuid', [None])[0]
+                    cat = query_params.get('cat', [None])[0]
+                    category=j.get("data").get("title").get("text")
+                    list.append({
+                        'category':category,
+                        'collection_uuid':collection_uuid,
+                        'cat':cat
+                    })
+            except Exception:
+                continue
 
+    return list
+
+def get_category_listing(item,city_data):
+
+        # l0_cat=item.get('l0_cat')
+        # l1_cat=item.get('l1_cat')
+        uuid=item.get("collection_uuid")
+        cat=item.get("cat")
+        url=f"https://api2.grofers.com/v1/layout/listing?collection_uuid={uuid}&cat={cat}"
+        # url=f"https://api2.grofers.com/v1/layout/listing?l0_cat={l0_cat}&l1_cat={l1_cat}"
+        scraper = cfscrape.create_scraper()
+        headers = {
+            'app_client': 'consumer_android',
+            'lat': city_data.get("lat"),
+            'lon': city_data.get("lon"),
+            'app_version': '80150510',
+        }
+        scraper.headers.update(headers)
+        response = scraper.post(url)
+        response=response.json()
+        data=response.get("response").get("snippets")
+        list=[]
+
+        for i in data:
+            sub_category=i.get("data").get("selected_title").get("text")
+            url=i.get("data").get("click_action").get("change_page_uri").get("api_params").get("url")
+            list.append({
+                'sub_category':sub_category,
+                'url':url
+            })
+        return list
+def get_all_items_of_subcategory(item,city_data,dict):
+    import json
+
+    flag=False
+    url="https://api2.grofers.com"+item.get("url")
+    while True:
+        scraper = cfscrape.create_scraper()
+        headers = {
+            'app_client': 'consumer_android',
+            'lat': city_data.get("lat"),
+            'lon': city_data.get("lon"),
+            'app_version': '80150510',
+        }
+        scraper.headers.update(headers)
+        response = scraper.post(url)
+        try:
+            response = response.json().get("response",{})
+        except Exception as e:
+            print(response.text)
+            # print(e)
+            return
+
+        nextUrl=None
+        if response.get("pagination"):
+            nextUrl=response.get("pagination").get("next_url")
+        if nextUrl:
+            url="https://api2.grofers.com"+nextUrl
+        else:
+            flag=True
+        snippets=response.get("snippets",[])
+        for snippet in snippets:
+            try:
+                if snippet.get("data").get("variant_list"):
+                    for variant in snippet.get("data").get("variant_list"):
+                        name = variant.get("data").get("name").get("text")
+                        mrp = variant.get("tracking").get("common_attributes").get("mrp")
+                        weight = variant.get("data").get("variant").get("text")
+                        offer_price = variant.get("tracking").get("common_attributes").get("price")
+                        cat = variant.get("tracking").get("common_attributes").get("l0_category")
+                        category_1=variant.get("tracking").get("common_attributes").get("ptype")
+                        sub_cat = variant.get("tracking").get("common_attributes").get("l1_category")
+                        stock = "In Stock" if variant.get("tracking").get("common_attributes").get("state") == "available" else "Out of Stock"
+                        brand = snippet.get("data").get("brand_name",{}).get("text")
+                        city = city_data.get("city")
+                        print(name,weight,mrp,offer_price,cat,sub_cat,stock,brand,city,category_1)
+                        dict['Name'].append(name)
+                        dict['MRP'].append(mrp)
+                        dict['Price'].append(offer_price)
+                        dict['Weight'].append(weight)
+                        dict['Category'].append(cat)
+                        dict['Sub Category'].append(sub_cat)
+                        dict['Availability'].append(stock)
+                        dict['City'].append(city)
+                        dict['Brand'].append(brand)
+                        dict['category_1'].append(category_1)
+                else:
+                    name=snippet.get("data").get("name").get("text")
+                    mrp=snippet.get("tracking").get("common_attributes").get("mrp")
+                    weight=snippet.get("data").get("variant").get("text")
+                    offer_price=snippet.get("tracking").get("common_attributes").get("price")
+                    cat=snippet.get("tracking").get("common_attributes").get("l0_category")
+                    sub_cat = snippet.get("tracking").get("common_attributes").get("l1_category")
+                    category_1 = snippet.get("tracking").get("common_attributes").get("ptype")
+                    stock="In Stock" if snippet.get("tracking").get("common_attributes").get("state")=="available" else "Out of Stock"
+                    brand = snippet.get("data").get("brand_name",{}).get("text")
+                    city=city_data.get("city")
+                    print(name, weight, mrp, offer_price, cat, sub_cat, stock, brand, city,category_1)
+                    dict['Name'].append(name)
+                    dict['MRP'].append(mrp)
+                    dict['Price'].append(offer_price)
+                    dict['Weight'].append(weight)
+                    dict['Category'].append(cat)
+                    dict['Sub Category'].append(sub_cat)
+                    dict['Availability'].append(stock)
+                    dict['City'].append(city)
+                    dict['Brand'].append(brand)
+                    dict['category_1'].append(category_1)
+            except Exception as e:
+                # raise e
+                continue
+        if flag:
+            break
+def scrape_blinkit():
+    cities_data=get_cities()
+    dict=get_dict()
+    for city_data in cities_data:
+        count = 0
+        feed_listing=get_feed_listing(city_data)
+        for item in feed_listing:
+            print(item)
+            category_listing=get_category_listing(item,city_data)
+            for subs in category_listing:
+                print(subs)
+                get_all_items_of_subcategory(subs,city_data,dict)
+            count += 1
+    return dict
+
+def scrape_blinkit1():
+    cities_data=get_cities()
+    dict=get_dict()
+    for city_data in cities_data:
+        feed_listing=get_feed_listing(city_data)
+        sub_category_list=[]
+        for item in feed_listing:
+            category_listing=get_category_listing(item,city_data)
+            for subs in category_listing:
+                subs.update({
+                    'category':item.get('category')
+                })
+                sub_category_list.append(subs)
+                # get_all_items_of_subcategory(subs,city_data,dict)
+        print(len(sub_category_list))
+    return dict
 
 def connect_with_sheet(sheet_name):
   gc = pygsheets.authorize(service_file='google_sheet_credentials.json')
   sh = gc.open(sheet_name)
   return sh
 
-# def upload_data(df, Location):
-#     # data = json_data[query]
-#     # data = read_from_bigquery(data)
-#     # data = pd.DataFrame.from_records(data)
-#     google_sheet_name = 'Scrappers1'
-#     sh = connect_with_sheet(google_sheet_name)
-#     wk1 = sh.worksheet('title', Location)
-#     wk1.clear()
-#     wk1.set_dataframe(df, (1, 1))
-#     return
-
-
+def get_data_from_sheet(sheet_name, i):
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = service_account.Credentials.from_service_account_file(
+        "google_sheet_credentials.json",
+        scopes=scope)
+    client = gspread.authorize(creds)
+    sheet = client.open(sheet_name)
+    sheet_instance = sheet.get_worksheet(i)
+    records_data = sheet_instance.get_all_records()
+    table = pd.DataFrame(records_data)
+    return table
